@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCC 2026 | Cosplay Team Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            color: white;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+        .comic-font {
+            font-family: 'Bangers', cursive;
+            letter-spacing: 2px;
+        }
+        .comic-border {
+            border: 4px solid black;
+            box-shadow: 8px 8px 0px #000;
+        }
+        /* Canvas Background Setup */
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .content-layer {
+            position: relative;
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        /* Controls UI Styling */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 12px;
+            z-index: 50;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            backdrop-filter: blur(10px);
+            width: 240px;
+        }
+        .controls.hidden-ui {
+            transform: translateY(120%) scale(0.9);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .toggle-ui {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 60;
+            background: #fff;
+            color: black;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border: 2px solid black;
+        }
+        
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(12px);
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .btn-pop {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .btn-pop:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: 12px 12px 0px #000;
+        }
+        .leader-card {
+            border: 6px solid #fbbf24;
+            box-shadow: 15px 15px 0px #000;
+        }
+        .guide-card {
+            border: 3px solid black;
+            box-shadow: 6px 6px 0px #ef4444;
+            transition: 0.2s;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .guide-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0px #ef4444;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+        .float-anim {
+            animation: float 4s ease-in-out infinite;
+        }
+        #modal-container {
+            transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+            transform: scale(0.95);
+            opacity: 0;
+        }
+        .modal-overlay.active #modal-container {
+            transform: scale(1);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Dynamic Canvas Background -->
+    <canvas id="comicCanvas"></canvas>
+
+    <!-- Theme Controls -->
+    <div id="uiToggle" class="toggle-ui" onclick="toggleUI()">
+        <i data-lucide="settings"></i>
+    </div>
+
+    <div id="controls" class="controls shadow-2xl hidden-ui">
+        <div class="text-[11px] font-black uppercase tracking-[0.2em] text-yellow-400 mb-2 border-b border-white/10 pb-1">Power Suit Themes</div>
+        <div class="grid grid-cols-2 gap-2">
+            <button onclick="setTheme('spider')" class="px-3 py-2 bg-red-700 hover:bg-red-600 text-[10px] font-black rounded uppercase border-b-4 border-blue-900">Spider</button>
+            <button onclick="setTheme('gamma')" class="px-3 py-2 bg-lime-600 hover:bg-lime-500 text-[10px] font-black rounded uppercase border-b-4 border-green-900">Gamma</button>
+            <button onclick="setTheme('electric')" class="px-3 py-2 bg-cyan-500 hover:bg-cyan-400 text-[10px] font-black rounded uppercase border-b-4 border-blue-700">Electric</button>
+            <button onclick="setTheme('steel')" class="px-3 py-2 bg-slate-400 hover:bg-slate-300 text-slate-900 text-[10px] font-black rounded uppercase border-b-4 border-slate-600">Steel</button>
+            <button onclick="setTheme('heroic')" class="px-3 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-[10px] font-black rounded uppercase border-b-4 border-orange-600">Classic</button>
+            <button onclick="setTheme('noir')" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-[10px] font-black rounded uppercase border-b-4 border-black">Vigilante</button>
+        </div>
+    </div>
+
+    <!-- Content Wrapper -->
+    <div class="content-layer">
+        <!-- Hero Section -->
+        <section class="min-h-screen flex flex-col items-center justify-start relative px-4 pt-4 pb-20">
+            <div class="flex flex-col items-center z-20 w-full max-w-4xl -mt-4">
+                <img src="https://i.postimg.cc/c4s2kyH0/696b574616bdcc4d225310d4-Comic-Con-India-All-City-Show-Logos-Gurugram-2025-p-500.png" 
+                     alt="Gurugram Comic Con 2026" 
+                     class="h-48 md:h-[420px] w-auto max-w-full object-contain drop-shadow-[0_20px_50px_rgba(251,191,36,0.6)] float-anim mb-0"
+                     onerror="this.src='https://via.placeholder.com/500x420?text=GCC+2026'">
+                
+                <div class="w-full max-w-xl text-center -mt-6 mb-12 md:mb-20">
+                    <p class="comic-font text-xl md:text-3xl text-white drop-shadow-[2px_2px_0_rgba(0,0,0,0.5)] uppercase">
+                        14TH – 15TH MARCH 2026
+                    </p>
+                    <p class="font-black text-yellow-400 uppercase tracking-tighter text-[10px] md:text-sm mt-0.5 drop-shadow-[1px_1px_0_rgba(0,0,0,0.5)]">
+                        GYMKHANA CLUB GROUNDS, GURUGRAM
+                    </p>
+                </div>
+            </div>
+
+            <div class="max-w-5xl mx-auto text-center z-10">
+                <h1 class="comic-font text-5xl md:text-7xl mb-8 leading-tight uppercase flex flex-col items-center">
+                    <span class="text-white drop-shadow-[4px_4px_0_#ef4444]">Welcome to the</span>
+                    <span class="bg-yellow-400 text-red-600 px-6 py-2 my-2 comic-border inline-block drop-shadow-[8px_8px_0_#000]">
+                        Cosplay Registration
+                    </span>
+                    <span class="text-white drop-shadow-[4px_4px_0_#ef4444]">Team</span>
+                </h1>
+
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="#team" class="btn-pop bg-white text-black px-8 py-4 comic-border font-black text-lg uppercase">Meet The Crew</a>
+                    <a href="#guide" class="btn-pop bg-indigo-600 text-white px-8 py-4 comic-border font-black text-lg uppercase">Team Guide</a>
+                    <button type="button" onclick="window.toggleModal(true)" class="btn-pop bg-yellow-400 text-black px-8 py-4 comic-border font-black text-lg uppercase">The Rulebook</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Team Guide Section -->
+        <section id="guide" class="py-24 px-4 bg-zinc-950/85 backdrop-blur-lg border-t-8 border-black overflow-hidden">
+            <div class="max-w-7xl mx-auto">
+                <div class="mb-16 text-center">
+                    <h2 class="comic-font text-7xl text-yellow-400 mb-4 uppercase">Team Strategy Room</h2>
+                    <div class="h-2 w-32 bg-indigo-600 mx-auto rounded-full mb-8"></div>
+                    <p class="text-zinc-400 font-black uppercase text-xl tracking-widest">Our Responsibilities</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-24">
+                    <div class="guide-card bg-white p-6 items-center text-center">
+                        <i data-lucide="clipboard-check" class="text-red-600 mb-4 w-10 h-10"></i>
+                        <h4 class="comic-font text-2xl text-black uppercase mb-2">Application Handling</h4>
+                        <p class="text-zinc-600 font-bold text-sm">Manage registration, review submissions, and ensure all required details are complete.</p>
+                    </div>
+                    <div class="guide-card bg-white p-6 items-center text-center">
+                        <i data-lucide="shield-check" class="text-indigo-600 mb-4 w-10 h-10"></i>
+                        <h4 class="comic-font text-2xl text-black uppercase mb-2">Verification</h4>
+                        <p class="text-zinc-600 font-bold text-sm">Confirm eligibility (including age, originality, and theme compliance).</p>
+                    </div>
+                    <div class="guide-card bg-white p-6 items-center text-center">
+                        <i data-lucide="layers" class="text-yellow-600 mb-4 w-10 h-10"></i>
+                        <h4 class="comic-font text-2xl text-black uppercase mb-2">Categorization</h4>
+                        <p class="text-zinc-600 font-bold text-sm">Classify entries based on defined contest rules.</p>
+                    </div>
+                    <div class="guide-card bg-white p-6 items-center text-center">
+                        <i data-lucide="message-square" class="text-green-600 mb-4 w-10 h-10"></i>
+                        <h4 class="comic-font text-2xl text-black uppercase mb-2">Communication</h4>
+                        <p class="text-zinc-600 font-bold text-sm">Share event schedules, judging procedures, and stage requirements with cosplayers.</p>
+                    </div>
+                    <div class="guide-card bg-white p-6 items-center text-center">
+                        <i data-lucide="users" class="text-blue-600 mb-4 w-10 h-10"></i>
+                        <h4 class="comic-font text-2xl text-black uppercase mb-2">Judge Coordination</h4>
+                        <p class="text-zinc-600 font-bold text-sm">Provide judges with contestant details and specific performance requirements.</p>
+                    </div>
+                    <div class="guide-card bg-white p-6 items-center text-center">
+                        <i data-lucide="help-circle" class="text-purple-600 mb-4 w-10 h-10"></i>
+                        <h4 class="comic-font text-2xl text-black uppercase mb-2">Inquiry Handling</h4>
+                        <p class="text-zinc-600 font-bold text-sm">Address cosplayer questions and concerns promptly and professionally.</p>
+                    </div>
+                    <div class="guide-card bg-white p-6 items-center text-center">
+                        <i data-lucide="file-text" class="text-orange-600 mb-4 w-10 h-10"></i>
+                        <h4 class="comic-font text-2xl text-black uppercase mb-2">Documentation</h4>
+                        <p class="text-zinc-600 font-bold text-sm">Maintain a clear record of entries, costume details, and official scores.</p>
+                    </div>
+                    <div class="guide-card bg-white p-6 items-center text-center">
+                        <i data-lucide="zap" class="text-yellow-400 mb-4 w-10 h-10"></i>
+                        <h4 class="comic-font text-2xl text-black uppercase mb-2">Problem-Solving</h4>
+                        <p class="text-zinc-600 font-bold text-sm">Resolve any conflicts or registration issues live during the event.</p>
+                    </div>
+                </div>
+
+                <div class="bg-black/90 comic-border p-8 md:p-12 relative text-center">
+                    <div class="text-center mb-12">
+                        <h3 class="comic-font text-5xl text-white uppercase">Championship Structure</h3>
+                    </div>
+                    <div class="flex flex-col items-center gap-12">
+                        <div class="bg-yellow-400 text-black px-10 py-4 comic-border font-black text-2xl uppercase">Types of Championships</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-40 w-full max-w-4xl relative">
+                            <div class="flex flex-col items-center text-center">
+                                <div class="bg-red-600 text-white px-8 py-3 comic-border font-black text-xl uppercase mb-4 w-full">ICC (Indian Cosplay Championship)</div>
+                                <p class="text-zinc-500 font-bold text-xs uppercase tracking-widest">National Level Competition</p>
+                            </div>
+                            <div class="flex flex-col items-center text-center">
+                                <div class="bg-indigo-600 text-white px-8 py-3 comic-border font-black text-xl uppercase mb-6 w-full">Gurugram Cosplay Championship</div>
+                                <p class="text-indigo-400 font-black text-xs uppercase mb-4 tracking-widest">Daily Categories</p>
+                                <div class="grid grid-cols-2 gap-3 w-full">
+                                    <div class="bg-zinc-800 border border-zinc-700 p-2 text-[10px] font-black uppercase text-zinc-300">Comic Books & Graphic Novels</div>
+                                    <div class="bg-zinc-800 border border-zinc-700 p-2 text-[10px] font-black uppercase text-zinc-300">Movies, TV, & Animated</div>
+                                    <div class="bg-zinc-800 border border-zinc-700 p-2 text-[10px] font-black uppercase text-zinc-300">Anime & Manga</div>
+                                    <div class="bg-zinc-800 border border-zinc-700 p-2 text-[10px] font-black uppercase text-zinc-300">Sci-fi & Fantasy</div>
+                                    <div class="bg-zinc-800 border border-zinc-700 p-2 text-[10px] font-black uppercase text-zinc-300">Gaming</div>
+                                    <div class="bg-zinc-800 border border-zinc-700 p-2 text-[10px] font-black uppercase text-zinc-300">Group Cosplay</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Team Section -->
+        <section id="team" class="py-24 px-4 bg-black/50 backdrop-blur-md border-t-8 border-black">
+            <div class="max-w-7xl mx-auto text-center">
+                <div class="mb-20">
+                    <h2 class="comic-font text-7xl text-white mb-4 uppercase tracking-wider">The Registry Squad</h2>
+                    <div class="h-2 w-32 bg-red-600 mx-auto rounded-full"></div>
+                </div>
+
+                <div class="flex flex-col gap-16">
+                    <!-- Leader -->
+                    <div class="flex justify-center">
+                        <div class="bg-white text-black p-10 max-w-4xl w-full leader-card relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 bg-yellow-400 p-4 font-black uppercase text-xs rotate-45 translate-x-10 -translate-y-2">The Commander</div>
+                            <div class="flex flex-col md:flex-row items-center md:items-start gap-10">
+                                <div class="w-40 h-40 bg-black comic-border flex items-center justify-center shrink-0 overflow-hidden">
+                                    <img src="https://iili.io/fbUo7PR.jpg" alt="Rohit Bisht" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/160x160?text=RB'">
+                                </div>
+                                <div class="text-left">
+                                    <h3 class="comic-font text-6xl mb-2 text-red-600 uppercase">Rohit Bisht</h3>
+                                    <p class="font-black text-black uppercase mb-6 tracking-widest text-sm">Team Leader</p>
+                                    <div class="space-y-4 font-semibold text-zinc-700 leading-relaxed text-lg text-left whitespace-pre-wrap">I help people use AI to create cool stuff so they don’t question their job security.
+
+I go out only when I absolutely have to, but if it’s something fun or too silly to execute, count me in.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Members Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <!-- Member 1 -->
+                        <div class="bg-zinc-800/90 p-8 comic-border group hover:bg-white transition-all duration-300 flex flex-col items-start text-left">
+                            <div class="flex items-center gap-6 mb-6 w-full">
+                                <div class="w-20 h-20 bg-zinc-700 comic-border flex items-center justify-center group-hover:bg-black shrink-0"><i data-lucide="award" class="text-white w-10 h-10"></i></div>
+                                <div>
+                                    <h3 class="comic-font text-4xl text-white group-hover:text-black uppercase">Aahan Rawat</h3>
+                                    <p class="font-black text-blue-500 uppercase tracking-tighter text-xs">Registry Operative</p>
+                                </div>
+                            </div>
+                            <div class="font-medium text-zinc-400 group-hover:text-zinc-700 space-y-4 text-sm leading-relaxed text-justify whitespace-pre-wrap">Hi, I’m Aahan currently pursuing BCA + MCA (2nd year). This is my second time volunteering; my first was in Delhi 2025 where I received the Best Volunteer award. 
+
+Huge otaku nerd — I watch a lot of anime and read manga ranging from niche to mainstream. I also regularly play MOBA games like Honor of Kings and MLBB.</div>
+                        </div>
+
+                        <!-- Member 2 -->
+                        <div class="bg-zinc-800/90 p-8 comic-border group hover:bg-white transition-all duration-300 flex flex-col items-start text-left">
+                            <div class="flex items-center gap-6 mb-6 w-full">
+                                <div class="w-20 h-20 bg-zinc-700 comic-border flex items-center justify-center group-hover:bg-black shrink-0"><i data-lucide="shield-check" class="text-white w-10 h-10"></i></div>
+                                <div>
+                                    <h3 class="comic-font text-4xl text-white group-hover:text-black uppercase">Saurav Prasad</h3>
+                                    <p class="font-black text-blue-500 uppercase tracking-tighter text-xs">Registry Operative</p>
+                                </div>
+                            </div>
+                            <div class="font-medium text-zinc-400 group-hover:text-zinc-700 space-y-4 text-sm leading-relaxed text-justify whitespace-pre-wrap">I’m Saurav, 19. Currently pursuing BCA and studying Japanese (JP-1). I also have a Diploma in Ethical Hacking. 
+
+Previously worked at Horror Con, DCC, and other event roles. I’m excited to be part of this team and look forward to supporting everyone. 😊 どうも</div>
+                        </div>
+
+                        <!-- Member 3 -->
+                        <div class="bg-zinc-800/90 p-8 comic-border group hover:bg-white transition-all duration-300 flex flex-col items-start text-left">
+                            <div class="flex items-center gap-6 mb-6 w-full">
+                                <div class="w-20 h-20 bg-zinc-700 comic-border flex items-center justify-center group-hover:bg-black shrink-0"><i data-lucide="zap" class="text-white w-10 h-10"></i></div>
+                                <div>
+                                    <h3 class="comic-font text-4xl text-white group-hover:text-black uppercase">Vanshita Pahuja</h3>
+                                    <p class="font-black text-blue-500 uppercase tracking-tighter text-xs">Registry Operative</p>
+                                </div>
+                            </div>
+                            <div class="font-medium text-zinc-400 group-hover:text-zinc-700 space-y-4 text-sm leading-relaxed text-justify whitespace-pre-wrap">Heyy people! I'm Vanshita, 21, and I'm currently working as an influencer marketer. 
+
+I'm a first-time volunteer so I'm really excited and looking forward to working with you guys 🤙🏻</div>
+                        </div>
+
+                        <!-- Member 4 -->
+                        <div class="bg-zinc-800/90 p-8 comic-border group hover:bg-white transition-all duration-300 flex flex-col items-start text-left">
+                            <div class="flex items-center gap-6 mb-6 w-full">
+                                <div class="w-20 h-20 bg-zinc-700 comic-border flex items-center justify-center group-hover:bg-black shrink-0"><i data-lucide="dumbbell" class="text-white w-10 h-10"></i></div>
+                                <div>
+                                    <h3 class="comic-font text-4xl text-white group-hover:text-black uppercase">Shubham Saini</h3>
+                                    <p class="font-black text-blue-500 uppercase tracking-tighter text-xs">Registry Operative</p>
+                                </div>
+                            </div>
+                            <div class="font-medium text-zinc-400 group-hover:text-zinc-700 space-y-4 text-sm leading-relaxed text-justify whitespace-pre-wrap">Konnichiwa minasan! Myself Shubham Saini, 23. Pursuing BSc Physical Education and Japanese language course from DU. 
+
+I have volunteered many times in the sports field, but this is my first time with Comic Con India. Excited for the event! 🫡</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Rules Modal -->
+        <div id="rulesModal" class="modal-overlay" onclick="if(event.target === this) window.toggleModal(false)">
+            <div id="modal-container" class="bg-white text-black w-full max-w-2xl comic-border overflow-hidden relative text-center">
+                <div class="bg-black p-6 flex justify-between items-center border-b-4 border-black">
+                    <h2 class="comic-font text-4xl text-yellow-400 uppercase">Squad Code of Conduct</h2>
+                    <button type="button" onclick="window.toggleModal(false)" class="bg-red-600 text-white p-2 hover:bg-red-700 transition comic-border"><i data-lucide="x"></i></button>
+                </div>
+                <div class="p-8 md:p-10 space-y-10">
+                    <!-- Rule 1 Updated -->
+                    <div class="flex flex-col items-center">
+                        <div class="bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center font-black shrink-0 comic-border text-xl mb-4">1</div>
+                        <div>
+                            <h4 class="font-black uppercase text-2xl mb-2">Acknowledge Messages</h4>
+                            <ul class="font-bold text-zinc-600 space-y-2 text-sm">
+                                <li>All messages from admins must be acknowledged promptly with a reply or reaction.</li>
+                                <li>Leaving messages on “Seen” without a reply or reaction will be treated as inactivity.</li>
+                                <li>Active participation is mandatory.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Rule 2 Updated -->
+                    <div class="flex flex-col items-center">
+                        <div class="bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center font-black shrink-0 comic-border text-xl mb-4">2</div>
+                        <div>
+                            <h4 class="font-black uppercase text-2xl mb-2">Pre-events are mandatory</h4>
+                            <ul class="font-bold text-zinc-600 space-y-2 text-sm">
+                                <li>Attendance at all pre-events is compulsory.</li>
+                                <li>No exceptions.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-zinc-100 p-6 border-t-4 border-black text-center">
+                    <button type="button" onclick="window.toggleModal(false)" class="bg-black text-white px-12 py-4 comic-border font-black uppercase hover:bg-zinc-800 transition text-xl">I AGREE</button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="bg-black/90 py-20 px-4 text-center border-t-8 border-yellow-400">
+            <p class="comic-font text-4xl text-white mb-4 tracking-wider uppercase">Gurugram Comic Con 2026</p>
+            <p class="text-zinc-500 font-black uppercase text-xs tracking-[0.4em]">Cosplay Registration Team // Internal Command Portal</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- BACKGROUND CANVAS LOGIC ---
+        const canvas = document.getElementById('comicCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        let mouseX = width / 2;
+        let mouseY = height / 2;
+        let targetMouseX = width / 2;
+        let targetMouseY = height / 2;
+        let frame = 0;
+
+        const themes = {
+            spider: { key: 'spider', bg: ['#991b1b', '#1e1b4b'], rays: '#1e3a8a', dots: 'rgba(0, 0, 0, 0.4)', elemFill: 'rgba(255, 255, 255, 0.05)', elemStroke: '#ffffff' },
+            gamma: { key: 'gamma', bg: ['#14532d', '#022c22'], rays: '#064e3b', dots: 'rgba(0, 0, 0, 0.5)', elemFill: 'rgba(132, 204, 22, 0.3)', elemStroke: '#000000' },
+            electric: { key: 'electric', bg: ['#1e3a8a', '#312e81'], rays: '#60a5fa', dots: 'rgba(255, 255, 255, 0.05)', elemFill: 'rgba(34, 211, 238, 0.2)', elemStroke: '#ffffff' },
+            steel: { key: 'steel', bg: ['#334155', '#0f172a'], rays: '#1e293b', dots: 'rgba(255, 255, 255, 0.05)', elemFill: 'rgba(148, 163, 184, 0.2)', elemStroke: '#f8fafc' },
+            heroic: { key: 'heroic', bg: ['#f59e0b', '#78350f'], rays: '#b45309', dots: 'rgba(153, 27, 27, 0.2)', elemFill: 'rgba(255, 255, 255, 0.4)', elemStroke: '#ef4444' },
+            noir: { key: 'noir', bg: ['#18181b', '#000000'], rays: '#09090b', dots: 'rgba(255, 255, 255, 0.03)', elemFill: 'rgba(113, 113, 122, 0.1)', elemStroke: '#52525b' }
+        };
+
+        let currentTheme = themes.gamma;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            if (mouseX === 0 || targetMouseX === 0) {
+                targetMouseX = mouseX = width / 2;
+                targetMouseY = mouseY = height / 2;
+            }
+        }
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('mousemove', (e) => {
+            targetMouseX = e.clientX;
+            targetMouseY = e.clientY;
+        });
+
+        function setTheme(key) { 
+            currentTheme = themes[key]; 
+            shapes.forEach(s => s.reset()); 
+            // Feedback for UI
+            document.getElementById('controls').classList.add('hidden-ui');
+        }
+        
+        function toggleUI() { document.getElementById('controls').classList.toggle('hidden-ui'); }
+
+        function drawWeb(ctx, size) { ctx.beginPath(); for(let i=0; i<8; i++) { const a = (i*Math.PI)/4; ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*size, Math.sin(a)*size); } for(let j=1; j<=3; j++) { const r = (size/3)*j; ctx.moveTo(r, 0); for(let i=1; i<=8; i++) { const a = (i*Math.PI)/4; ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r); } } ctx.stroke(); }
+        function drawBolt(ctx, size) { ctx.beginPath(); ctx.moveTo(-size/4, -size/2); ctx.lineTo(size/4, -size/8); ctx.lineTo(-size/8, 0); ctx.lineTo(size/4, size/2); ctx.stroke(); }
+        function drawToxic(ctx, size) { ctx.beginPath(); ctx.arc(0, 0, size/2, 0, Math.PI*2); ctx.fill(); ctx.stroke(); }
+        function drawGear(ctx, size) { const t = 8; ctx.beginPath(); for(let i=0; i<t*2; i++) { const r = i%2===0?size/2:size/2.8; const a = (i*Math.PI)/t; ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.stroke(); }
+
+        class FloatingShape {
+            constructor() { this.reset(); }
+            reset() { this.x = Math.random()*width; this.y = Math.random()*height; this.size = Math.random()*50+25; this.speedX = (Math.random()-0.5)*0.3; this.speedY = (Math.random()-0.5)*0.3; this.rot = Math.random()*Math.PI*2; this.rotSpeed = (Math.random()-0.5)*0.006; }
+            update() { this.x += this.speedX + (mouseX - width/2)*0.0004; this.y += this.speedY + (mouseY - height/2)*0.0004; this.rot += this.rotSpeed; if(this.x < -150 || this.x > width+150 || this.y < -150 || this.y > height+150) this.reset(); }
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.rot); ctx.strokeStyle = currentTheme.elemStroke; ctx.fillStyle = currentTheme.elemFill; ctx.globalAlpha = 0.25; ctx.lineWidth = 2.5;
+                if(currentTheme.key === 'electric') { ctx.shadowColor = 'cyan'; ctx.shadowBlur = 10; }
+                if(currentTheme.key === 'gamma') { ctx.shadowColor = '#84cc16'; ctx.shadowBlur = 10; }
+                switch(currentTheme.key) { case 'spider': drawWeb(ctx, this.size); break; case 'electric': drawBolt(ctx, this.size); break; case 'gamma': drawToxic(ctx, this.size); break; case 'steel': drawGear(ctx, this.size); break; default: ctx.strokeRect(-this.size/2, -this.size/2, this.size, this.size); }
+                ctx.restore();
+            }
+        }
+
+        const shapes = Array.from({ length: 15 }, () => new FloatingShape());
+
+        function animate() {
+            frame++;
+            mouseX += (targetMouseX - mouseX) * 0.05;
+            mouseY += (targetMouseY - mouseY) * 0.05;
+            
+            ctx.clearRect(0,0,width,height);
+            
+            // BG Gradient
+            const grad = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, Math.max(width, height)*1.2);
+            grad.addColorStop(0, currentTheme.bg[0]);
+            grad.addColorStop(1, currentTheme.bg[1]);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0,0,width,height);
+            
+            // Rays
+            ctx.save();
+            ctx.translate(mouseX, mouseY);
+            ctx.fillStyle = currentTheme.rays;
+            ctx.globalAlpha = 0.1;
+            const rayAngle = Math.PI * 2 / 28;
+            for(let i=0; i<28; i++) {
+                ctx.beginPath(); ctx.moveTo(0,0);
+                const a1 = i * rayAngle + frame * 0.0008, a2 = a1 + rayAngle * 0.35;
+                const r = Math.max(width, height) * 2;
+                ctx.lineTo(Math.cos(a1)*r, Math.sin(a1)*r);
+                ctx.lineTo(Math.cos(a2)*r, Math.sin(a2)*r);
+                ctx.closePath(); ctx.fill();
+            }
+            ctx.restore();
+            
+            // Halftone Dot Spacing
+            ctx.save();
+            ctx.fillStyle = currentTheme.dots;
+            const dotSpacing = 28;
+            for(let x = -dotSpacing; x < width + dotSpacing; x += dotSpacing) {
+                for(let y = -dotSpacing; y < height + dotSpacing; y += dotSpacing) {
+                    const d = Math.sqrt((x-mouseX)**2+(y-mouseY)**2);
+                    const proximityScale = Math.max(0, 1 - d / 500);
+                    const size = 1.6 + (proximityScale * 1.2);
+                    ctx.beginPath();
+                    ctx.arc(x + (mouseX * 0.01) % dotSpacing, y + (mouseY * 0.01) % dotSpacing, size, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+            
+            shapes.forEach(s => { s.update(); s.draw(); });
+            requestAnimationFrame(animate);
+        }
+
+        window.toggleModal = function(show) {
+            const modal = document.getElementById('rulesModal');
+            if (!modal) return;
+            if (show) { 
+                modal.classList.add('active'); 
+                document.body.style.overflow = 'hidden'; 
+            } else { 
+                modal.classList.remove('active'); 
+                document.body.style.overflow = ''; 
+            }
+        };
+
+        window.onload = () => {
+            lucide.createIcons();
+            resize();
+            animate();
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+        };
+    </script>
+</body>
+</html>
